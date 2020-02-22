@@ -79,6 +79,9 @@ Switch the presentation and the presenter screen.
 .BI "\-S, \-\-single\-screen"
 Force to use only one screen
 .TP
+.BI "\-r, \-\-record\-time"
+Record the time per slide
+.TP
 .BI "\-t, \-\-start\-time"=T
 Start time of the presentation to be used as a countdown. (Format: HH:MM (24h))
 .TP
