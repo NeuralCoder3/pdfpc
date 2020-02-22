@@ -87,6 +87,9 @@ namespace pdfpc {
             {"single-screen", 'S', 0, 0,
                 ref Options.single_screen,
                 "Force to use only one screen", null},
+            {"record-time", 'r', 0, 0,
+                ref Options.record_time,
+                "Record the time per slide", null},
             {"start-time", 't', 0, OptionArg.STRING,
                 ref Options.start_time,
                 "Start time of the presentation", "HH:MM"},
@@ -345,6 +348,7 @@ namespace pdfpc {
                 GLib.printerr("Pdf file \"%s\" not found\n", pdfFilename);
                 Process.exit(1);
             }
+            // GLib.print("Time will be recorded\n");
 
             var metadata = new Metadata.Pdf(pdfFilename);
             this.controller.metadata = metadata;

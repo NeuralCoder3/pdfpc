@@ -55,6 +55,11 @@ namespace pdfpc {
         public static bool single_screen = false;
 
         /**
+         * Commandline option to record the time
+         */
+        public static bool record_time = false;
+
+        /**
          * Commandline option to run in windowed mode
          */
         public static string windowed = "none";
