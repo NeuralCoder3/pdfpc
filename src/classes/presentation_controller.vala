@@ -90,6 +90,8 @@ namespace pdfpc {
                 highlight_h = 0;
             }
 
+            GLib.print("%d %s\n",this.current_user_slide_number,this.timer.get_text());
+
             this.controllables_update();
         }
 
