@@ -70,6 +70,14 @@ developers.
 .BI "\-P, \-\-page"
 Go to a specific page directly after startup. In case of overlays, the first slide will be displayed.
 .TP
+.BI "\-r, \-\-page\-transition"=TRANSITION
+Set default page transition. The TRANSITION specification is of the form
+type:duration:angle:alignment:direction. See the \fBPage transitions\fR section
+for the list of supported types. \fBduration\fR is in seconds. The three last
+settings are optional (and indeed meaningless for some of the transition types).
+The accepted values for \fBangle\fR are 0/90/180/270; \fBalignment\fR can be
+h[orizontal] of v[ertical] and \fBdirection\fR i[nward] or o[utward].
+.TP
 .BI "\-R, \-\-pdfpc\-location"=LOCATION
 Use custom pdfpc file.
 .TP
@@ -298,7 +306,7 @@ The timer is started if you are navigating away from the first page for the
 first time.  This feature is quite useful as you may want to show the title page
 of your presentation while people are still entering the room and the
 presentation has not really begun yet.  If you want to start over you can
-use the \[aq]r\[aq] key which will make the presenter reset the timer.
+use the \[aq]Ctrl + t\[aq] key which will make the presenter reset the timer.
 .PP
 
 If a duration is given, the timer also provides hints aiding the presenter to
@@ -419,6 +427,16 @@ actual presentation via the \[aq]Ctrl + e\[aq] key.
 This just changes the progress display in the presenter screen, as to
 have a better overview of how many slides are left.
 
+.SS Page transitions
+.PP
+Pdfpc supports almost all standard animated PDF page transitions: blinds, box,
+cover, dissolve, fade, glitter (except the diagonal one), push, split, uncover,
+and wipe, including various alignments, angles, and directions (where
+applicable). The transitions are enabled only for sequential (either forward or
+backward) movement; in the later case, the transition is "inverted".
+.PP
+Advancing slides automatically is also supported.
+
 .SS Movies
 .PP
 Pdfpc can play back movies included in the PDF file.  Movies may be started
@@ -465,12 +483,21 @@ See the bugs section for further information.
 
 .SS Pointer mode
 .PP
-If needed, it is possible to turn on a pointer which draws a red dot in the
-place pointed by mouse cursor on both - presenter and presentation screens.
-It is also possible to increase and decrease the pointer size. Additionally,
-when the pointer is enabled, it is possible to highlight some area of the
-current slide using the drag mouse motion. The area
-outside the selected region will be dimmed.
+If needed, it is possible to turn on a pointer which draws a red (by default)
+dot in the place pointed by mouse cursor on both presenter and presentation
+screens. It is also possible to increase and decrease the pointer size.
+Additionally, when the pointer is enabled, it is possible to highlight some area
+of the current slide using the drag mouse motion. The area outside the selected
+region will be dimmed. You can zoom in the selected area by pressing 'z'; press
+'Escape' to exit the zoom mode. You can highlight another region while zoomed
+in, but there will be no further action on pressing 'z'. Drawing is also
+disabled in this mode.
+
+.SS Spotlight mode
+.PP
+Spotlight mode is similar to the pointer mode: a circular area that moves with
+the mouse and can be adjusted in size, but instead of highlighting the spot by a
+different color, it shades the background.
 
 .SS Drawing mode
 .PP
@@ -553,6 +580,11 @@ With GTK3 it is possible to modify the appearance of pdfpc. There are two
 locations where pdfpc is looking for files. The default location is
 @CMAKE_INSTALL_PREFIX@/share/pixmaps/pdfpc/pdfpc.css. It can be copied
 to $XDG_CONFIG_HOME/pdfpc/pdfpc.css and modified to the user's liking.
+.PP
+The geometry of various views (the current/next etc slide) in the presenter
+window can be adjusted at run time in the "Customization" mode, which is
+activated by pressing Shift+c. In this mode, mouse-draggable handles will
+appear. Exit the customization with Escape.
 
 .SS Desktop integration
 
@@ -580,36 +612,14 @@ the \fBGetNotes\fR method, three properties (\fBNumberOfOverlays\fR,
 .SS LaTeX package
 
 .PP
-A tiny LaTeX package comes with pdfpc. It provides a convenient way to specify
-notes and to define certain meta properties of the presentation. This
-functionality is often sufficient to avoid using \fB.pdfpc\fR files, thus
-allowing for preparing fully self-contained presentation slides. The usage is:
+A tiny LaTeX package is available for pdfpc at CTAN. It provides a convenient
+way to specify notes and to define certain meta properties of the presentation.
+For a full documentation, please consult the pdfpc package documentation. You
+can open it with:
 
 .RS
-\\usepackage[options]{pdfpc}
+$ texdoc pdfpc
 .RE
-
-The possible options are \fBduration\fR, \fBstarttime\fR, \fBendtime\fR,
-\fBenduserslide\fR, \fBlastminutes\fR, and \fBoverridenote\fR. The first five
-correspond to the similarly named \fB.pdfpc\fR or command-line options (and
-accept arguments in the same formats).
-
-To add a note to a slide:
-
-.RS
-\\pdfpcnote{<Text of a note>}
-.RE
-
-The \fBpdfpc\fR package can be used standalone or together with beamer. In the
-later case, it may be desirable to continue using the \\note command. To this
-end, the \fBoverridenote\fR option should be provided. Please note though, that
-this will work only in simple cases.
-
-If you prefer using full-featured beamer notes rendered alongside the
-presentation (\\setbeameroption{show notes on second screen}), the \fBpdfpc\fR
-package will autodetect it, so using the \fB\-\-notes\fR command-line option is
-unnecessary. To override the autodetection, use the \fBnotesposition\fR option,
-accepting the same values (right/left/top/bottom/none).
 
 .SH BUGS
 

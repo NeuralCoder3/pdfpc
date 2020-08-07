@@ -51,10 +51,13 @@ namespace pdfpc.Window {
             int screen_num, bool windowed, int width = -1, int height = -1) {
             base(controller, false, screen_num, windowed, width, height);
 
+            this.controller.reload_request.connect(this.on_reload);
             this.controller.update_request.connect(this.update);
+            this.controller.zoom_request.connect(this.on_zoom);
 
-            this.view = new View.Pdf.from_fullscreen(this,
-                Metadata.Area.CONTENT, true);
+            this.view = new View.Pdf.from_fullscreen(this, false, true);
+            this.view.transitions_enabled = true;
+            this.view.entering_slide.connect(this.on_entering_slide);
 
             this.overlay_layout.add(this.view);
 
@@ -64,6 +67,14 @@ namespace pdfpc.Window {
                 (float) ratio, false);
             frame.add(overlay_layout);
             this.add(frame);
+        }
+
+        /**
+         * Called on document reload.
+         * TODO: in principle the document geometry may change!
+         */
+        public void on_reload() {
+            this.view.invalidate();
         }
 
         /**
@@ -84,6 +95,15 @@ namespace pdfpc.Window {
 
             bool force = old_disabled != this.view.disabled;
             this.view.display(this.controller.current_slide_number, force);
+        }
+
+        private void on_zoom(PresentationController.ScaledRectangle? rect) {
+            this.main_view.display(this.controller.current_slide_number,
+                true, rect);
+        }
+
+        private void on_entering_slide(int slide_number) {
+            this.controller.start_autoadvance_timer(slide_number);
         }
     }
 }

@@ -285,13 +285,14 @@ namespace pdfpc.Window {
 
             // Draw the highlighted area, but ignore very short drags
             // made unintentionally by mouse clicks
-            if (c.highlight_w > 0.01 && c.highlight_h > 0.01) {
+            if (!c.current_pointer.is_spotlight &&
+                c.highlight.width > 0.01 && c.highlight.height > 0.01) {
                 context.rectangle(0, 0, a.width, a.height);
                 context.new_sub_path();
-                context.rectangle((int)(c.highlight_x*a.width),
-                                  (int)(c.highlight_y*a.height),
-                                  (int)(c.highlight_w*a.width),
-                                  (int)(c.highlight_h*a.height));
+                context.rectangle((int)(c.highlight.x*a.width),
+                                  (int)(c.highlight.y*a.height),
+                                  (int)(c.highlight.width*a.width),
+                                  (int)(c.highlight.height*a.height));
 
                 context.set_fill_rule(Cairo.FillRule.EVEN_ODD);
                 context.set_source_rgba(0,0,0,0.5);
@@ -300,15 +301,22 @@ namespace pdfpc.Window {
                 context.new_path();
             }
             // Draw the pointer when not dragging
-            if (c.drag_x == -1 && !c.pointer_hidden) {
+            if (c.drag_x == -1 &&
+                (!c.pointer_hidden || c.current_pointer.is_spotlight)) {
                 int x = (int)(a.width*c.pointer_x);
                 int y = (int)(a.height*c.pointer_y);
-                int r = (int)(a.height*0.001*c.pointer_size);
+                int r = (int)(a.height*0.001*c.current_pointer.size);
 
-                context.set_source_rgba(c.pointer_color.red,
-                                        c.pointer_color.green,
-                                        c.pointer_color.blue,
-                                        c.pointer_color.alpha);
+                Gdk.RGBA rgba = c.current_pointer.get_rgba();
+                context.set_source_rgba(rgba.red,
+                                        rgba.green,
+                                        rgba.blue,
+                                        rgba.alpha);
+                if (c.current_pointer.is_spotlight) {
+                    context.rectangle(0, 0, a.width, a.height);
+                    context.new_sub_path();
+                    context.set_fill_rule(Cairo.FillRule.EVEN_ODD);
+                }
                 context.arc(x, y, r, 0, 2*Math.PI);
                 context.fill();
             }
@@ -343,8 +351,7 @@ namespace pdfpc.Window {
                 context.set_source_surface(drawing_surface, 0, 0);
                 context.paint();
                 context.set_matrix(old_xform);
-                if (this.is_presenter && c.in_drawing_mode() &&
-                    !c.pointer_hidden) {
+                if (this.is_presenter && c.in_drawing_mode()) {
                     double width_adjustment = (double) a.width / base_width;
                     context.set_operator(Cairo.Operator.OVER);
                     context.set_line_width(2.0);

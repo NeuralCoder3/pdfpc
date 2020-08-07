@@ -134,6 +134,11 @@ namespace pdfpc {
         public static bool disable_scrolling = false;
 
         /**
+         * Config option to disable tooltips.
+         */
+        public static bool disable_tooltips = false;
+
+        /**
          * Commandline option to disable the auto detection of overlay slides
          */
         public static bool disable_auto_grouping = false;
@@ -169,6 +174,11 @@ namespace pdfpc {
          * in the presenter window
          **/
         public static uint next_height = 70;
+
+        /**
+         * Maximize the main view of the presenter in the drawing modes
+         */
+        public static bool maximize_in_drawing = false;
 
         /**
          * Minimum width for the overview miniatures
@@ -253,6 +263,16 @@ namespace pdfpc {
         public static uint pointer_size = 10;
 
         /**
+         * Spotlight opacity (i.e., opacity of the outside area) (0 - 100)
+         */
+        public static int spotlight_opacity = 50;
+
+        /**
+         * Spotlight size
+         */
+        public static uint spotlight_size = 100;
+
+        /**
          * Try to automatically load video srt file
          */
         public static bool auto_srt = false;
@@ -276,6 +296,16 @@ namespace pdfpc {
          * Test pdfpc without installation
          */
         public static bool no_install = false;
+
+        /**
+         * FPS of slide transitions
+         */
+        public static uint transition_fps = 25;
+
+        /**
+         * Default page transition
+         */
+        public static string? default_transition = null;
 
         /**
          * Show the final slide of each overlay in "next slide" view

@@ -78,6 +78,9 @@ namespace pdfpc {
             {"page", 'P', 0, OptionArg.INT,
                 ref Options.page,
                 "Go to page number N directly after startup", "N"},
+            {"page-transition", 'r', 0, OptionArg.STRING,
+                ref Options.default_transition,
+                "Set default page transition", "TYPE"},
             {"pdfpc-location", 'R', 0, OptionArg.STRING,
                 ref Options.pdfpc_location,
                 "Full path location to a pdfpc file", "PATH"},
@@ -150,8 +153,8 @@ namespace pdfpc {
          * Print version string and copyright statement
          */
         private void print_version() {
-            GLib.print("pdfpc v4.3.0\n"
-                     + "Copyright (C) 2010-2018 see CONTRIBUTORS\n\n"
+            GLib.print("pdfpc v4.5pre\n"
+                     + "Copyright (C) 2010-2020 see CONTRIBUTORS\n\n"
                      + "License GPLv2: GNU GPL version 2 <http://gnu.org/licenses/gpl-2.0.html>.\n"
                      + "This is free software: you are free to change and redistribute it.\n"
                      + "There is NO WARRANTY, to the extent permitted by law.\n");
@@ -448,6 +451,10 @@ namespace pdfpc {
                 Process.exit(1);
             }
 
+            if (Options.default_transition != null) {
+                metadata.set_default_transition_from_string(Options.default_transition);
+            }
+
             // Handle monitor added/removed events.
             // We assume only the presentation screen can be PnP.
             display.monitor_added.connect((m) => {
@@ -500,6 +507,11 @@ namespace pdfpc {
                         presentation.connect_monitor(null);
                     }
                 });
+
+            var im_module = Environment.get_variable("GTK_IM_MODULE");
+            if (im_module == "xim") {
+                GLib.printerr("Warning: XIM is known to cause problems\n");
+            }
 
             // Enter the Glib eventloop
             // Everything from this point on is completely signal based

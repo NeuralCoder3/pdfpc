@@ -78,6 +78,12 @@ namespace pdfpc.Metadata {
         protected NotesPosition notes_position = NotesPosition.NONE;
 
         /**
+         * Assume notes are formatted in Markdown. False by default for backward
+         * compatibility.
+         */
+        public bool enable_markdown = false;
+
+        /**
          * Number of pages in the pdf document
          */
         protected uint page_count;
@@ -141,6 +147,13 @@ namespace pdfpc.Metadata {
          * A file to read additional notes from
          */
         private string? notes_include = null;
+
+        /**
+         * Default page transition
+         */
+        public Poppler.PageTransition default_transition {
+            get; protected set;
+        }
 
         /**
          * Parse the given pdfpc file
@@ -294,6 +307,126 @@ namespace pdfpc.Metadata {
                 } else {
                     this.pdfpc_fname = fname + ".pdfpc";
                 }
+            }
+        }
+
+        public void set_default_transition_from_string(string line) {
+            var trans = this.default_transition;
+
+            string[] tokens = line.split(":");
+
+            var trans_type = tokens[0];
+            switch (trans_type) {
+            case "blinds":
+                trans.type = Poppler.PageTransitionType.BLINDS;
+                break;
+            case "box":
+                trans.type = Poppler.PageTransitionType.BOX;
+                break;
+            case "cover":
+                trans.type = Poppler.PageTransitionType.COVER;
+                break;
+            case "dissolve":
+                trans.type = Poppler.PageTransitionType.DISSOLVE;
+                break;
+            case "fade":
+                trans.type = Poppler.PageTransitionType.FADE;
+                break;
+            case "fly":
+                trans.type = Poppler.PageTransitionType.FLY;
+                break;
+            case "glitter":
+                trans.type = Poppler.PageTransitionType.GLITTER;
+                break;
+            case "push":
+                trans.type = Poppler.PageTransitionType.PUSH;
+                break;
+            case "replace":
+                trans.type = Poppler.PageTransitionType.REPLACE;
+                break;
+            case "split":
+                trans.type = Poppler.PageTransitionType.SPLIT;
+                break;
+            case "uncover":
+                trans.type = Poppler.PageTransitionType.UNCOVER;
+                break;
+            case "wipe":
+                trans.type = Poppler.PageTransitionType.WIPE;
+                break;
+            default:
+                GLib.printerr("Unknown trans type %s\n", trans_type);
+                return;
+            }
+
+            if (tokens.length > 1) {
+                var trans_duration = double.parse(tokens[1]);
+                if (trans_duration > 0) {
+                    trans.duration_real = trans_duration;
+                } else {
+                    GLib.printerr("Transition duration must be positive\n");
+                    return;
+                }
+            }
+
+            if (tokens.length > 2) {
+                trans.angle = int.parse(tokens[2]);
+            }
+
+            if (tokens.length > 3) {
+                var alignment = tokens[3];
+                switch (alignment) {
+                case "h":
+                case "horizontal":
+                    trans.alignment =
+                        Poppler.PageTransitionAlignment.HORIZONTAL;
+                    break;
+                case "v":
+                case "vertical":
+                    trans.alignment =
+                        Poppler.PageTransitionAlignment.VERTICAL;
+                    break;
+                case "":
+                    break;
+                default:
+                    GLib.printerr("Invalid transition alignment %s\n",
+                        alignment);
+                    return;
+                }
+            }
+
+            if (tokens.length > 4) {
+                var direction = tokens[4];
+                switch (direction) {
+                case "i":
+                case "inward":
+                    trans.direction = Poppler.PageTransitionDirection.INWARD;
+                    break;
+                case "o":
+                case "outward":
+                    trans.direction = Poppler.PageTransitionDirection.OUTWARD;
+                    break;
+                case "":
+                    break;
+                default:
+                    GLib.printerr("Invalid transition direction %s\n",
+                        direction);
+                    return;
+                }
+            }
+
+            this.default_transition = trans;
+        }
+
+        /**
+         * Return slide duration
+         */
+        public double get_slide_duration(int slide_number) {
+            if (slide_number >= 0 && slide_number < this.get_slide_count()) {
+
+                var page = this.document.get_page(slide_number);
+                return page.get_duration();
+            } else {
+                return -1;
             }
         }
 
@@ -501,9 +634,18 @@ namespace pdfpc.Metadata {
                         case "EndTime":
                             this.end_time = entry.value;
                             break;
+                        case "LastMinutes":
+                            Options.last_minutes = int.parse(entry.value);
+                            break;
                         case "NotesPosition":
                             this.notes_position =
                                 NotesPosition.from_string(entry.value);
+                            break;
+                        case "DefaultTransition":
+                            this.set_default_transition_from_string(entry.value);
+                            break;
+                        case "EnableMarkdown":
+                            this.enable_markdown = bool.parse(entry.value);
                             break;
                         default:
                             GLib.printerr("unknown XMP entry %s\n", entry.key);
@@ -519,6 +661,8 @@ namespace pdfpc.Metadata {
          * Base constructor taking the file url to the pdf file
          */
         public Pdf(string? pdfFilename) {
+            this.default_transition = new Poppler.PageTransition();
+            this.default_transition.duration_real = 1.0;
             if (pdfFilename != null) {
                 this.load(pdfFilename);
             }
@@ -792,9 +936,53 @@ namespace pdfpc.Metadata {
         }
 
         /**
+         * Return the next slide in the overlay (or -1 if doesn't exist),
+         * but skipping over slides with automatic advancing
+         */
+        public int next_in_overlay(int slide_number) {
+            if (slide_number < 0 ||
+                slide_number >= this.get_slide_count() - 1) {
+                return -1;
+            } else {
+                var next_slide_number = slide_number  + 1;
+                while (this.real_slide_to_user_slide(slide_number) ==
+                       this.real_slide_to_user_slide(next_slide_number)) {
+                    if (this.get_slide_duration(next_slide_number) <= 0) {
+                        return next_slide_number;
+                    }
+                    next_slide_number++;
+                }
+
+                return -1;
+            }
+        }
+
+        /**
+         * Return the previous slide in the overlay (or -1 if doesn't exist),
+         * but skipping over slides with automatic advancing
+         */
+        public int prev_in_overlay(int slide_number) {
+            if (slide_number < 1 ||
+                slide_number >= this.get_slide_count()) {
+                return -1;
+            } else {
+                var prev_slide_number = slide_number - 1;
+                while (this.real_slide_to_user_slide(slide_number) ==
+                    this.real_slide_to_user_slide(prev_slide_number)) {
+                    if (this.get_slide_duration(prev_slide_number) <= 0) {
+                        return prev_slide_number;
+                    }
+                    prev_slide_number--;
+                }
+
+                return -1;
+            }
+        }
+
+        /**
          * Return the width of the first page of the loaded pdf document.
          *
-         * If slides contains also notes, this method returns the width of the content part only
+         * If slides also contain notes, return the width of the content part only
          *
          * In presentations all pages will have the same size in most cases,
          * therefore this value is assumed to be useful.
@@ -804,7 +992,7 @@ namespace pdfpc.Metadata {
         }
 
         /**
-         * Fixes the page width if pdfpc uses notes in slit mode
+         * Fixes the page width if pdfpc uses notes in split mode
          */
          public double get_corrected_page_width(double page_width) {
             if (    this.notes_position == NotesPosition.LEFT
@@ -818,7 +1006,7 @@ namespace pdfpc.Metadata {
         /**
          * Return the height of the first page of the loaded pdf document.
          *
-         * If slides contains also notes, this method returns the height of the content part only
+         * If slides also contain notes, return the height of the content part only
          *
          * In presentations all pages will have the same size in most cases,
          * therefore this value is assumed to be useful.
@@ -828,7 +1016,7 @@ namespace pdfpc.Metadata {
         }
 
         /**
-         * Fixes the page height if pdfpc uses notes in slit mode
+         * Fixes the page height if pdfpc uses notes in split mode
          */
          public double get_corrected_page_height(double page_height) {
             if (    this.notes_position == NotesPosition.TOP
@@ -842,56 +1030,52 @@ namespace pdfpc.Metadata {
         /**
          * Return the horizontal offset of the given area on the page
          */
-        public double get_horizontal_offset(Area area, double page_width = 0) {
+        public double get_horizontal_offset(bool notes_area,
+            double page_width = 0) {
             if (page_width == 0) {
                 page_width = this.original_page_width;
             }
 
-            switch (area) {
-                case Area.CONTENT:
-                    switch (this.notes_position) {
-                        case NotesPosition.LEFT:
-                            return page_width / 2;
-                        default:
-                            return 0;
-                    }
-                case Area.NOTES:
-                    switch (this.notes_position) {
-                        case NotesPosition.RIGHT:
-                            return page_width / 2;
-                        default:
-                            return 0;
-                    }
-                default:
-                    return 0;
+            if (notes_area) {
+                switch (this.notes_position) {
+                    case NotesPosition.RIGHT:
+                        return page_width / 2;
+                    default:
+                        return 0;
+                }
+            } else {
+                switch (this.notes_position) {
+                    case NotesPosition.LEFT:
+                        return page_width / 2;
+                    default:
+                        return 0;
+                }
             }
         }
 
         /**
          * Return the vertical offset of the given area on the page
          */
-        public double get_vertical_offset(Area area, double page_height = 0) {
+        public double get_vertical_offset(bool notes_area,
+            double page_height = 0) {
             if (page_height == 0) {
                 page_height = this.original_page_height;
             }
 
-            switch (area) {
-                case Area.CONTENT:
-                    switch (this.notes_position) {
-                        case NotesPosition.TOP:
-                            return page_height / 2;
-                        default:
-                            return 0;
-                    }
-                case Area.NOTES:
-                    switch (this.notes_position) {
-                        case NotesPosition.BOTTOM:
-                            return page_height / 2;
-                        default:
-                            return 0;
-                    }
-                default:
-                    return 0;
+            if (notes_area) {
+                switch (this.notes_position) {
+                    case NotesPosition.BOTTOM:
+                        return page_height / 2;
+                    default:
+                        return 0;
+                }
+            } else {
+                switch (this.notes_position) {
+                    case NotesPosition.TOP:
+                        return page_height / 2;
+                    default:
+                        return 0;
+                }
             }
         }
 
@@ -1012,15 +1196,12 @@ namespace pdfpc.Metadata {
             }
             return this.action_mapping;
         }
-    }
 
-    /**
-     * Defines an area on a pdf page
-     */
-    public enum Area {
-        FULL,
-        CONTENT,
-        NOTES;
+        public bool has_beamer_notes {
+            get {
+                return (this.notes_position != NotesPosition.NONE);
+            }
+        }
     }
 
     /**

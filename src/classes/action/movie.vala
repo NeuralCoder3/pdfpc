@@ -389,7 +389,7 @@ namespace pdfpc {
 
             foreach (var sink in this.sinks) {
                 var parent = sink.parent as View.Video;
-                parent.remove_video();
+                parent.remove_video(sink);
             }
         }
 
@@ -675,14 +675,8 @@ namespace pdfpc {
                 n++;
             }
 
-            bool notes_mode = (Options.notes_position != null) ? true : false;
             n = 0;
             foreach (var conf in video_confs) {
-                // if --notes passed, hide the video on the presenter screen
-                if (notes_mode && conf.window.is_presenter) {
-                    continue;
-                }
-
                 Gst.Element sink;
                 try {
                     sink = gst_element_make("gtksink", @"sink$n");
@@ -697,8 +691,7 @@ namespace pdfpc {
                 Gst.Element queue = Gst.ElementFactory.make("queue", @"queue$n");
                 bin.add_many(queue, sink);
                 tee.link(queue);
-                if ((conf.window.is_presenter && !notes_mode) ||
-                    (!conf.window.is_presenter && notes_mode)) {
+                if (conf.window.is_presenter) {
                     Gst.Element ad_element = this.add_video_control(queue, bin,
                         conf.rect);
                     ad_element.link(sink);
@@ -733,13 +726,12 @@ namespace pdfpc {
 
                         // Update the rectangle
                         conf.rect = rect;
-                        if ((window.is_presenter && !notes_mode) ||
-                            (!window.is_presenter && notes_mode)) {
+                        if (window.is_presenter) {
                             this.rect = rect;
                             this.scalex = (double) this.video_w/rect.width;
                             this.scaley = (double) this.video_h/rect.height;
                         }
-                        video_surface.resize_video(rect);
+                        video_surface.resize_video(video_area, rect);
                     });
                 this.sinks.add(video_area);
 
